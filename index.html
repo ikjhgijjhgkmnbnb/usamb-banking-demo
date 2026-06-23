@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>United States Active Military Bank {U.S.A.M.B} - Online Banking</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root { --primary: #003366; --dark: #002244; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        header { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        nav { background: var(--dark); padding: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        nav a { color: white; padding: 8px 12px; text-decoration: none; cursor: pointer; border-radius: 4px; }
+        nav a:hover, nav a.active { background: rgba(255,255,255,0.2); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .balance { font-size: 2rem; font-weight: bold; color: var(--primary); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        button, input[type="submit"] { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; width: 100%; margin: 5px 0; }
+        button:hover, input[type="submit"]:hover { background: var(--dark); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; width: 90%; max-width: 500px; border-radius: 8px; }
+        .login-container { max-width: 400px; margin: 80px auto; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: center; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .error { color: #d32f2f; }
+        .chart-container { position: relative; height: 300px; margin-top: 15px; }
+        .pending { color: #ff9800; }
+        .dispute-btn { background: #d32f2f; font-size: 0.9rem; padding: 6px 12px; width: auto; }
+        footer { background: #002244; color: white; text-align: center; padding: 15px; font-size: 0.9rem; }
+        @media (max-width: 768px) { nav { flex-direction: column; } header { flex-direction: column; gap: 10px; text-align: center; } }
+    </style>
+</head>
+<body>
+
+    <!-- Login Screen (unchanged) -->
+    <div id="login-screen">
+        <div class="login-container">
+            <h1>United States Active Military Bank {U.S.A.M.B}</h1>
+            <p>Secure Online Banking</p>
+            <form onsubmit="handleLogin(event)">
+                <input type="text" id="username" placeholder="Username (SSGThompson4)" required>
+                <input type="password" id="password" placeholder="Password (KimberThomp4L)" required>
+                <button type="submit">Login Securely</button>
+            </form>
+            <p class="error" id="login-error"></p>
+            <small>true: <strong>SSGThompson4</strong> / <strong>KimberThomp4L</strong></small>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" style="display: none;">
+        <header>
+            <div><h1>United States Active Military Bank {U.S.A.M.B}</h1><p>Member-Owned • Helping People Prosper</p></div>
+            <div><span id="user-greeting"></span><button onclick="logout()">Logout</button></div>
+        </header>
+        <nav>
+            <a onclick="showSection('dashboard')" class="active">Dashboard</a>
+            <a onclick="showSection('accounts')">Accounts</a>
+            <a onclick="showSection('deposit')">Deposit Check</a>
+            <a onclick="showSection('achtransfers')">Ach Transfers</a>
+            <a onclick="showSection('billpay')">Bill Pay</a>
+            <a onclick="showSection('wiretransfer')">Wire Transfer</a>
+            <a onclick="showSection('creditanddebitcard')">Credit/Debit Card</a>
+            <a onclick="showSection('401kjointsaccess')">401k Joints Access</a>
+            <a onclick="showSection('zelle,paypal')">Zelle, Paypal</a>
+            <a onclick="showSection('analytics')">Analytics</a>
+            <a onclick="showSection('history')">History</a>
+            <a onclick="showSection('disputes')">Disputes (Reg E)</a>
+        </nav>
+        <div class="container">
+
+            <!-- Existing sections (Dashboard, Accounts, Deposit, Transfers, Bill Pay, Wire Transfer, 401k Joints Accounts, Zelle, Paypal, Card Section, Analytics) remain the same -->
+
+            <!-- History with Dispute buttons -->
+            <div id="history" class="section" style="display:none;">
+                <h2>Transaction History</h2>
+                <div class="card">
+                    <button onclick="exportToCSV()" style="width:auto; margin-bottom:10px;">Export to CSV</button>
+                    <table>
+                        <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+                        <tbody id="history-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- New: Reg E Disputes -->
+            <div id="disputes" class="section" style="display:none;">
+                <h2>Reg E Error Resolution / Disputes</h2>
+                <div class="card">
+                    <p><strong>Regulation E Notice:</strong> You have 60 days from the statement date to report errors. We investigate within 10 business days (accelerated here for demo).</p>
+                    <form onsubmit="submitDispute(event)">
+                        <p><label>Select Transaction:</label>
+                            <select id="dispute-tx" required></select>
+                        </p>
+                        <p><label>Error Type:</label>
+                            <select id="error-type" required>
+                                <option value="Unauthorized">Unauthorized Transfer</option>
+                                <option value="Incorrect">Incorrect Amount</option>
+                                <option value="Missing">Missing from Statement</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </p>
+                        <p><label>Descrion:</label> <textarea id="dispute-desc" rows="3" placeholder="Explain the issue..." required></textarea></p>
+                        <button type="submit">Submit Dispute</button>
+                    </form>
+                    <div id="disputes-list" style="margin-top:20px;"></div>
+                </div>
+            </div>
+
+            <!-- Compliance footer -->
+            <footer>
+                <p>United States Active Military Bank {U.S.A.M.B}• Federally insured by NCUA up to $250,000</p>
+                <p class="compliance-notice">This is a demo. Real institutions follow full Reg E procedures.</p>
+            </footer>
+        </div>
+    </div>
+
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">✅ Success</h3>
+            <p id="modal-message"></p>
+            <button onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // === Previous variables + new disputes array ===
+        const VALID_USER = { username: "SSGThompson4", password: "KimberThomp4L", name: "Thompson Struthers" };
+        let currentUser = null, loginAttempts = 0;
+        let accounts = { checking: 979847.65, savings: 1545849.32, '401k joints Access': 2748240.99, 'credit card': 37467.67,};
+        let transactions = [ /* same as before */ ];
+        let pendingDeposits = [];
+        let disputes = []; // New: {id, txDesc, type, desc, status, date, provisional}
+        let spendingChart;
+
+        // ... (keep saveData, loadData, renderAll, depositCheck, processDeposit, createSpendingChart, etc.)
+
+        function renderHistory() {
+            const tbody = document.getElementById('history-table');
+            let rows = '';
+            // Add cleared transactions
+            transactions.forEach((t, idx) => {
+                rows += `
+                    <tr>
+                        <td>${t.date}</td>
+                        <td>${t.desc}</td>
+                        <td style="color:${t.amount>0?'green':'red'}">$${t.amount.toFixed(2)}</td>
+                        <td>${t.status || 'Cleared'}</td>
+                        <td><button class="dispute-btn" onclick="openDisputeForm(${idx})">Dispute</button></td>
+                    </tr>
+                `;
+            });
+            // pending deposits...
+            tbody.innerHTML = rows;
+        }
+
+        function openDisputeForm(txIndex) {
+            const tx = transactions[txIndex];
+            document.getElementById('dispute-tx').innerHTML = `<option value="${txIndex}">${tx.desc} ($${tx.amount})</option>`;
+            showSection('disputes');
+        }
+
+        function submitDispute(e) {
+            e.preventDefault();
+            const txIndex = parseInt(document.getElementById('dispute-tx').value);
+            const tx = transactions[txIndex];
+            const type = document.getElementById('error-type').value;
+            const desc = document.getElementById('dispute-desc').value;
+
+            const dispute = {
+                id: Date.now(),
+                txDesc: tx.desc,
+                amount: tx.amount,
+                type: type,
+                desc: desc,
+                status: "Under Review",
+                date: new Date().toISOString().split('T')[0],
+                provisional: true
+            };
+
+            disputes.push(dispute);
+
+            // Provisional credit (Reg E)
+            if (dispute.provisional) {
+                accounts.checking += Math.abs(tx.amount);
+                showModal("Provisional credit issued. Investigation in progress (Reg E).");
+            }
+
+            saveData();
+            renderAll();
+            renderDisputes();
+            e.target.reset();
+        }
+
+        function renderDisputes() {
+            const container = document.getElementById('disputes-list');
+            container.innerHTML = disputes.map(d => `
+                <div class="card" style="margin-bottom:10px;">
+                    <strong>${d.txDesc}</strong> - ${d.type}<br>
+                    Status: <span class="${d.status === 'Resolved' ? 'green' : 'pending'}">${d.status}</span><br>
+                    <small>${d.desc}</small>
+                </div>
+            `).join('');
+        }
+
+        function showSection(id) {
+            // ... existing logic ...
+            if (id === 'history') renderHistory();
+            if (id === 'disputes') renderDisputes();
+            if (id === 'analytics') createSpendingChart();
+        }
+
+        // Extend saveData / loadData to include disputes
+        function saveData() {
+            localStorage.setItem('ffcu_data', JSON.stringify({accounts, transactions, pendingDeposits, disputes}));
+        }
+
+        function loadData() {
+            // ... existing + disputes = data.disputes || [];
+        }
+
+        // Update other functions (makeAchTransfer, payBill, Zelle, PayPal, wireTransfer, 401kJointsAccess cardSection, etc.) to call renderHistory() where needed
+
+        window.onload = () => {
+            // init logic...
+        };
+    </script>
+</body>
+</html>
